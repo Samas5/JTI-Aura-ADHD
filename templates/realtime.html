@@ -9,7 +9,6 @@
       margin: 20px;
     }
 
-    /* Modal style */
     .modal {
       display: none;
       position: fixed;
@@ -33,7 +32,6 @@
     }
 
     .close {
-      color: #aaa;
       float: right;
       font-size: 28px;
       font-weight: bold;
@@ -44,6 +42,21 @@
       width: 100% !important;
       height: 400px !important;
     }
+
+    .semaforo {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 18px;
+    }
+
+    .circle {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      border: 2px solid #555;
+    }
   </style>
 </head>
 <body>
@@ -51,11 +64,17 @@
   <h2>Panel EEG</h2>
   <button onclick="document.getElementById('eegModal').style.display='block'">Abrir gráfica en tiempo real</button>
 
-  <!-- Modal -->
   <div id="eegModal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
       <h3>EEG en Tiempo Real (Canal 0)</h3>
+
+      <!-- Semáforo -->
+      <div class="semaforo">
+        <div id="semaforoCircle" class="circle"></div>
+        <div id="semaforoLabel">Cargando TBR...</div>
+      </div>
+
       <canvas id="eegChart"></canvas>
     </div>
   </div>
@@ -104,22 +123,53 @@
       }
     });
 
-    async function fetchData() {
+    async function fetchEEG() {
       try {
-        const response = await fetch('/eeg_data');
-        const json = await response.json();
+        const res = await fetch('/eeg_data');
+        const json = await res.json();
         if (json.signal) {
           eegChart.data.labels = json.time.map(t => parseFloat(t));
           eegChart.data.datasets[0].data = json.signal.map(s => parseFloat(s).toFixed(2));
           eegChart.update();
         }
       } catch (err) {
-        console.error("Error al obtener datos:", err);
+        console.error("Error obteniendo EEG:", err);
       }
     }
 
-    setInterval(fetchData, 1000);
-    fetchData();
+    async function fetchTBR() {
+      try {
+        const res = await fetch('/tbr_value');
+        const json = await res.json();
+        const tbr = parseFloat(json.tbr).toFixed(2);
+        const label = document.getElementById("semaforoLabel");
+        const circle = document.getElementById("semaforoCircle");
+
+        if (tbr > 4.5) {
+          circle.style.background = "red";
+          label.textContent = `TBR = ${tbr} → Alto (TDAH tipo inatento)`;
+        } else if (tbr >= 3.0) {
+          circle.style.background = "orange";
+          label.textContent = `TBR = ${tbr} → Posible distracción/somnolencia`;
+        } else if (tbr >= 1.5) {
+          circle.style.background = "green";
+          label.textContent = `TBR = ${tbr} → Óptimo (atención equilibrada)`;
+        } else {
+          circle.style.background = "blue";
+          label.textContent = `TBR = ${tbr} → Hiperactividad / ansiedad`;
+        }
+      } catch (err) {
+        console.error("Error obteniendo TBR:", err);
+      }
+    }
+
+    setInterval(() => {
+      fetchEEG();
+      fetchTBR();
+    }, 1000);
+
+    fetchEEG();
+    fetchTBR();
   </script>
 </body>
 </html>

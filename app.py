@@ -97,5 +97,14 @@ def realtime():
 def popup():
     return render_template("realtime_popup.html")
 
+@app.route("/tbr_value")
+def tbr_value():
+    try:
+        eeg_data = get_eeg_samples(inlet, duration_sec=2, fs=256)
+        tbr_value = calculate_tbr(eeg_data, fs=256, channel_index=0)
+        return jsonify({"tbr": tbr_value})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 if __name__ == '__main__':
     app.run(debug=True)
