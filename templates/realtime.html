@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EEG en Tiempo Real - Modal</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    /* Modal style */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      padding-top: 50px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 1200px;
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 400px !important;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Panel EEG</h2>
+  <button onclick="document.getElementById('eegModal').style.display='block'">Abrir gráfica en tiempo real</button>
+
+  <!-- Modal -->
+  <div id="eegModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
+      <h3>EEG en Tiempo Real (Canal 0)</h3>
+      <canvas id="eegChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('eegChart').getContext('2d');
+    const eegChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'EEG Signal',
+          borderColor: 'blue',
+          data: [],
+          pointRadius: 0,
+          borderWidth: 1,
+        }]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        scales: {
+          x: {
+            title: { display: true, text: 'Tiempo (s)' },
+            min: 0,
+            max: 1,
+            ticks: {
+              callback: function(value) {
+                return value.toFixed(2);
+              },
+              maxTicksLimit: 11
+            }
+          },
+          y: {
+            title: { display: true, text: 'Amplitud EEG' },
+            suggestedMin: -100,
+            suggestedMax: 100,
+            ticks: {
+              callback: function(value) {
+                return parseFloat(value).toFixed(2);
+              },
+              stepSize: 20
+            }
+          }
+        }
+      }
+    });
+
+    async function fetchData() {
+      try {
+        const response = await fetch('/eeg_data');
+        const json = await response.json();
+        if (json.signal) {
+          eegChart.data.labels = json.time.map(t => parseFloat(t));
+          eegChart.data.datasets[0].data = json.signal.map(s => parseFloat(s).toFixed(2));
+          eegChart.update();
+        }
+      } catch (err) {
+        console.error("Error al obtener datos:", err);
+      }
+    }
+
+    setInterval(fetchData, 1000);
+    fetchData();
+  </script>
+</body>
+</html>

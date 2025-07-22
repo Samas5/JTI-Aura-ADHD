@@ -76,6 +76,26 @@ def eeg_plot():
         
     except Exception as e:
         return jsonify({"error": str(e)})
+    
+@app.route("/eeg_data")
+def eeg_data():
+    try:
+        eeg = get_eeg_samples(inlet, duration_sec=1, fs=256)  # 1 segundo
+        eeg = np.array(eeg)
+        signal = eeg[:, 0]
+        time = np.linspace(0, 1, len(signal)).tolist()
+        signal = signal.tolist()
+        return jsonify({"time": time, "signal": signal})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@app.route("/realtime")
+def realtime():
+    return render_template("realtime.html")
+
+@app.route("/popup")
+def popup():
+    return render_template("realtime_popup.html")
 
 if __name__ == '__main__':
     app.run(debug=True)

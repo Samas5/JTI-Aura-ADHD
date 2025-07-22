@@ -1,6 +1,6 @@
 from pylsl import resolve_byprop, StreamInlet
 
-def connect_to_aura(name='charly', stream_type='EEG'):
+def connect_to_aura(name='AURA', stream_type='EEG'):
     """
     Conecta con el stream LSL que emite Aura.
     Si no encuentra, imprime qué streams están disponibles.
