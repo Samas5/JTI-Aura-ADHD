@@ -32,7 +32,6 @@
 <div id="eegModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
-    <h3 class="mb-3">EEG en Tiempo Real</h3>
 
     <!-- Semáforo -->
     <div class="semaforo">
@@ -63,8 +62,12 @@
     type:'line',
     data:{labels:[],datasets:[{label:'TBR',data:[],borderColor:'#ffc107',backgroundColor:'rgba(255,193,7,.15)',pointRadius:0,tension:.3}]},
     options:{animation:false,responsive:true,scales:{
-      x:{title:{display:false,text:'Tiempo (s)'}},
-      y:{title:{display:true,text:'TBR'},min:0,max:6,ticks:{stepSize:0.5,callback:v=>v.toFixed(1)}}
+            x:{
+        grid:{display:true},   // o false si tampoco quieres la cuadrícula
+        ticks:{display:false}  // oculta solo las etiquetas numéricas
+      },
+
+      y:{title:{display:true,text:'TBR'},min:0,max:8,ticks:{stepSize:0.5,callback:v=>v.toFixed(1)}}
     },plugins:{legend:{display:false}}}
   });
   let zonaAnotada=false;
