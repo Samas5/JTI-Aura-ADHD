@@ -10,7 +10,8 @@ from aura.reader import connect_to_aura, get_eeg_samples
 from aura.processor import calculate_tbr
 import time
 from collections import deque
-
+import json, pathlib
+STATS_FILE = pathlib.Path("music_stats.json")
 """
 app.py (versión completa)
 =========================
@@ -22,6 +23,17 @@ app.py (versión completa)
 # -------------------------------------------------------------------
 # Utilidades de lectura de CSV
 # -------------------------------------------------------------------
+
+
+def load_stats():
+    if STATS_FILE.exists():
+        return json.loads(STATS_FILE.read_text())
+    return []
+
+music_stats = load_stats() 
+
+def save_stats():
+    STATS_FILE.write_text(json.dumps(music_stats, indent=2))
 
 def leer_csv_auto(file_storage, header_row: int = 0, units_row: int | None = 1) -> pd.DataFrame:
     """Lee un CSV Aura probando codificaciones habituales.
@@ -179,6 +191,49 @@ def calibrar_tbr():
 
     return jsonify({"ok": True, "tbr_min": tbr_min, "tbr_max": tbr_max, "canal": canal_eeg})
 
+
+@app.route("/cerrar_medicion", methods=["POST"])
+def cerrar_medicion():
+    data = request.get_json()
+    valores = data["datos"]
+    if not valores:
+        return jsonify({"error": "no_data"}), 400
+
+    tmin, tmax = session["tbr_min"], session["tbr_max"]
+    # clasificar colores
+    colormap = {"rojo":0,"naranja":0,"verde":0,"azul":0}
+    for v in valores:
+        colormap[color_tbr(v, tmin, tmax)] += 1
+    total = len(valores)
+
+    # calcular estadísticos
+    sesion = {
+        "fecha":   time.strftime("%Y-%m-%d %H:%M"),
+        "cancion": data["cancion"],
+        "actividad": data["actividad"],
+        "duracion": total / 2,                     # 0.5 s paso
+        "promedio": round(sum(valores)/total, 2),
+        "maximo":   round(max(valores), 2),
+        "minimo":   round(min(valores), 2),
+        "pct_rojo":   round(colormap["rojo"]/total*100, 1),
+        "pct_naranja":round(colormap["naranja"]/total*100, 1),
+        "pct_verde":  round(colormap["verde"]/total*100, 1),
+        "pct_azul":   round(colormap["azul"]/total*100, 1)
+    }
+    music_stats.append(sesion)   # ① guarda en RAM
+    save_stats()                 # ② persiste en JSON
+    return jsonify({"ok": True})
+
+@app.route("/resultados_musica")
+def resultados_musica():
+    return render_template("resultados_musica.html", sesiones=music_stats[::-1])
+
+#Reiniciar stats de musica
+@app.route("/reset_stats")
+def reset_stats():
+    music_stats.clear()
+    save_stats()
+    return "stats cleared"
 
 # ---------- 2. TBR en vivo + umbrales ------------------------------
 
