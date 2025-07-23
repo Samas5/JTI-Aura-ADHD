@@ -1,102 +1,41 @@
 {% extends 'base.html' %}
-{% block title %}Evaluación en Tiempo Real | EEG-TDAH{% endblock %}
+{% block title %}Evaluación en Tiempo Real | EEG‑TDAH{% endblock %}
+
 {% block content %}
-
 <style>
-  .btn-modal {
-    background-color: #00c9a7;
-    color: white;
-    font-size: 1.2rem;
-    padding: 12px 30px;
-    border-radius: 30px;
-    border: none;
-    transition: background-color 0.3s ease;
-  }
+  /* --- CONTROLES ------------------------------------------------ */
+  .btn-modal{background:#00c9a7;color:#fff;font-size:1.2rem;padding:12px 30px;border-radius:30px;border:none;transition:.3s}
+  .btn-modal:hover{background:#00b191}
+  /* --- MODAL ---------------------------------------------------- */
+  .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.6)}
+  .modal-content{background:#fefefe;color:#000;margin:80px auto;padding:30px;border-radius:12px;width:90%;max-width:1000px}
+  .close{float:right;font-size:28px;font-weight:bold;cursor:pointer;color:#aaa}
+  .close:hover{color:#000}
 
-  .btn-modal:hover {
-    background-color: #00b191;
-  }
+  /* --- CHARTS --------------------------------------------------- */
+  canvas{width:100%!important;height:400px!important}
+  #tbrChart{height:240px!important}
 
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.6);
-  }
+  /* --- SEMÁFORO ------------------------------------------------- */
+  .semaforo{margin:20px 0;display:flex;align-items:center;gap:15px;font-size:18px}
+  .circle{width:25px;height:25px;border-radius:50%;border:2px solid #555}
 
-  .modal-content {
-    background-color: #fefefe;
-    color: #000;
-    margin: 80px auto;
-    padding: 30px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 1000px;
-  }
-
-  .close {
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    color: #aaa;
-  }
-
-  .close:hover {
-    color: #000;
-  }
-
-  canvas {
-    width: 100% !important;
-    height: 400px !important;
-  }
-
-  .semaforo {
-    margin: 20px 0;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    font-size: 18px;
-  }
-
-  .circle {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    border: 2px solid #555;
-  }
-
-  .intro-text {
-    font-size: 1rem;
-    color: #eee;
-    max-width: 700px;
-    margin: 0 auto 30px;
-    text-align: center;
-  }
+  .intro-text{font-size:1rem;color:#eee;max-width:700px;margin:0 auto 30px;text-align:center}
 </style>
 
 <div class="text-center">
-  <h2 class="mb-3">Panel EEG en Tiempo Real</h2>
-  <p class="intro-text">
-    Observa tu actividad cerebral representada en una gráfica interactiva. El semáforo indica tu nivel de atención a partir del índice TBR (Theta/Beta Ratio),
-    utilizado comúnmente en estudios de TDAH. Esta herramienta es de carácter experimental y educativo.
+  <h2 class="mb-3 text-white">Panel EEG en Tiempo Real</h2>
+  <p class="intro-text text-white">
+    Observa tu actividad cerebral representada en una gráfica interactiva. El semáforo indica tu nivel de atención a partir del índice TBR (Theta/Beta Ratio).
   </p>
-
-  <button class="btn-modal" onclick="document.getElementById('eegModal').style.display='block'">
-    Abrir gráfica en tiempo real
-  </button>
+  <button class="btn-modal" onclick="document.getElementById('eegModal').style.display='block'">Abrir gráfica en tiempo real</button>
 </div>
 
-<!-- Modal -->
+<!-- Modal principal -->
 <div id="eegModal" class="modal">
   <div class="modal-content">
     <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
-    <h3 class="mb-3">EEG en Tiempo Real (Canal 0)</h3>
+    <h3 class="mb-3">EEG en Tiempo Real</h3>
 
     <!-- Semáforo -->
     <div class="semaforo">
@@ -104,106 +43,96 @@
       <div id="semaforoLabel">Cargando TBR...</div>
     </div>
 
+    <!-- Gráfica de amplitud EEG -->
     <canvas id="eegChart"></canvas>
+
+    <!-- Gráfica de TBR personalizado -->
+    <h4 class="mt-4">TBR en tiempo real</h4>
+    <canvas id="tbrChart"></canvas>
   </div>
 </div>
 
-<!-- Chart.js -->
+<!-- Chart.js y plugin annotation -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.2"></script>
+
 <script>
+  /* ---------------- CONFIG GLOBAL ---------------- */
   const MAX_POINTS = 100;
 
-  const ctx = document.getElementById('eegChart').getContext('2d');
-  const eegChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'EEG Signal',
-        borderColor: 'blue',
-        data: [],
-        pointRadius: 0,
-        borderWidth: 1,
-      }]
-    },
-    options: {
-      animation: false,
-      responsive: true,
-      scales: {
-        x: {
-          title: { display: true, text: 'Tiempo (s)' },
-          ticks: {
-            callback: function (value) {
-              return parseFloat(value).toFixed(2);
-            },
-            maxTicksLimit: 10
-          }
-        },
-        y: {
-          title: { display: true, text: 'Amplitud EEG' },
-          suggestedMin: -100,
-          suggestedMax: 100,
-          ticks: {
-            callback: function (value) {
-              return parseFloat(value).toFixed(2);
-            },
-            stepSize: 20
-          }
-        }
-      }
-    }
+  /* ----------- GRÁFICA EEG (amplitud) ------------- */
+  const eegCtx = document.getElementById('eegChart').getContext('2d');
+  const eegChart = new Chart(eegCtx, {
+    type:'line',
+    data:{labels:[],datasets:[{label:'EEG',borderColor:'#0dcaf0',data:[],pointRadius:0,borderWidth:1,tension:.2}]},
+    options:{animation:false,responsive:true,scales:{
+      x:{title:{display:true,text:'Tiempo (s)'}},
+      y:{title:{display:true,text:'Amplitud'},suggestedMin:-100,suggestedMax:100}
+    },plugins:{legend:{display:false}}}
   });
 
-  function updateEEGChart(time, signal) {
-    const labels = eegChart.data.labels;
-    const data = eegChart.data.datasets[0].data;
-
-    for (let i = 0; i < time.length; i++) {
-      labels.push(time[i]);
-      data.push(signal[i]);
-    }
-
-    while (labels.length > MAX_POINTS) labels.shift();
-    while (data.length > MAX_POINTS) data.shift();
-
+  function updateEEGChart(time,signal){
+    const L=eegChart.data.labels,D=eegChart.data.datasets[0].data;
+    time.forEach((t,i)=>{L.push(t);D.push(signal[i]);});
+    while(L.length>MAX_POINTS){L.shift();D.shift();}
     eegChart.update('none');
   }
 
-  async function fetchEEG() {
-    try {
-      const res = await fetch('/eeg_data');
-      const json = await res.json();
-      if (json.signal && json.time) {
-        const time = json.time.map(t => parseFloat(t));
-        const signal = json.signal.map(s => parseFloat(s));
-        updateEEGChart(time, signal);
+  /* -------------- GRÁFICA TBR --------------------- */
+  const tbrCtx=document.getElementById('tbrChart').getContext('2d');
+  const tbrChart=new Chart(tbrCtx,{
+    type:'line',
+    data:{labels:[],datasets:[{label:'TBR',data:[],borderColor:'#ffc107',backgroundColor:'rgba(255,193,7,.15)',pointRadius:0,tension:.3}]},
+    options:{animation:false,responsive:true,scales:{x:{title:{display:true,text:'Tiempo (s)'}},y:{title:{display:true,text:'TBR'},min:0,max:6}},plugins:{legend:{display:false}}}
+  });
+  let zonaAnotada=false;
+
+  async function fetchTBRStream(){
+    try{
+      const res=await fetch('/tbr_stream');
+      const j=await res.json();
+      if(j.error) return;
+
+      // actualizar datos
+      tbrChart.data.labels=j.t;
+      tbrChart.data.datasets[0].data=j.v;
+
+      // banda verde una sola vez
+      if(!zonaAnotada){
+        tbrChart.options.plugins.annotation={annotations:{zona:{type:'box',yMin:j.tbr_min,yMax:j.tbr_max,backgroundColor:'rgba(25,135,84,.15)'}}};
+        tbrChart.options.scales.y.max=Math.max(6,j.tbr_max+1);
+        zonaAnotada=true;
       }
-    } catch (err) {
-      console.error("Error obteniendo EEG:", err);
-    }
-  }
+      tbrChart.update('none');
+    }catch(e){console.error(e);}  }
 
+  /* --------------- SEMÁFORO ---------------------- */
   async function fetchTBR(){
-  try{
-    const {tbr, tbr_min, tbr_max} = await (await fetch('/tbr_value')).json();
-    const t = tbr.toFixed(2), circle = document.getElementById('semaforoCircle');
-    let color, texto;
-    if      (tbr > tbr_max)            {color='red';    texto='Baja atención';}
-    else if (tbr > (tbr_min+tbr_max)/2){color='orange'; texto='Distracción';}
-    else if (tbr >= tbr_min)           {color='green';  texto='Óptimo';}
-    else                               {color='blue';   texto='Hiper‑arousal';}
-    circle.style.background=color;
-    document.getElementById('semaforoLabel').textContent = `TBR=${t} • ${texto}`;
-  }catch(e){console.error(e);}
-}
+    try{
+      const {tbr,tbr_min,tbr_max}=await (await fetch('/tbr_value')).json();
+      const t=tbr.toFixed(2),circle=document.getElementById('semaforoCircle');
+      let color,texto;
+      if     (tbr>tbr_max){color='red';texto='Baja atención';}
+      else if(tbr>(tbr_min+tbr_max)/2){color='orange';texto='Distracción';}
+      else if(tbr>=tbr_min){color='green';texto='Óptimo';}
+      else {color='blue';texto='Hiper‑arousal';}
+      circle.style.background=color;
+      document.getElementById('semaforoLabel').textContent=`TBR=${t} • ${texto}`;
+    }catch(e){console.error(e);}  }
 
-  setInterval(() => {
-    fetchEEG();
-    fetchTBR();
-  }, 500);
+  /* --------------- EEG DATA ---------------------- */
+  async function fetchEEG(){
+    try{
+      const j=await (await fetch('/eeg_data')).json();
+      if(j.signal&&j.time){
+        const time=j.time.map(parseFloat);
+        const sig=j.signal.map(parseFloat);
+        updateEEGChart(time,sig);
+      }
+    }catch(e){console.error(e);}  }
 
-  fetchEEG();
-  fetchTBR();
+  /* --------------- LOOP -------------------------- */
+  setInterval(()=>{fetchEEG();fetchTBR();fetchTBRStream();},500);
+  fetchEEG();fetchTBR();fetchTBRStream();
 </script>
-
 {% endblock %}

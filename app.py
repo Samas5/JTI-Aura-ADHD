@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from aura.reader import connect_to_aura, get_eeg_samples
 from aura.processor import calculate_tbr
+import time
+from collections import deque
 
 """
 app.py (versión completa)
@@ -175,6 +177,36 @@ def tbr_value():
         tbr_live = calculate_tbr(get_eeg_samples(inlet, 2, 256))
         return jsonify({
             "tbr": tbr_live,
+            "tbr_min": session.get("tbr_min", 1.5),
+            "tbr_max": session.get("tbr_max", 4.5),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+# ---------- 2‑bis · Stream de TBR en tiempo real --------------------
+MAX_PTS = 120                       # ~1 min si haces request cada 0.5 s
+tbr_buf  = deque(maxlen=MAX_PTS)
+time_buf = deque(maxlen=MAX_PTS)
+
+@app.route("/tbr_stream")
+def tbr_stream():
+    """Devuelve arrays de tiempo (s) y TBR, más umbrales calibrados."""
+    try:
+        tbr_live = calculate_tbr(get_eeg_samples(inlet, 0.5, 256))  # 0.5 s
+        ts = time.time()
+
+        tbr_buf.append(tbr_live)
+        time_buf.append(ts)
+
+        if not time_buf:
+            return jsonify({"error": "Sin datos aún"})
+
+        t0 = time_buf[0]
+        times = [round(t - t0, 1) for t in time_buf]  # relativo a t0
+
+        return jsonify({
+            "t": times,
+            "v": list(tbr_buf),
             "tbr_min": session.get("tbr_min", 1.5),
             "tbr_max": session.get("tbr_max", 4.5),
         })
