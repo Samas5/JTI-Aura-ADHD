@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Resumen de sesión{% endblock %}
+{% block content %}
+<h2 class="mb-4 text-center text-white">Resumen TBR</h2>
+
+<table class="table table-dark w-auto mx-auto">
+  <thead><tr><th>Color</th><th>% del tiempo</th></tr></thead>
+  <tbody id="tblBody"></tbody>
+</table>
+
+<ul class="list-group w-auto mx-auto">
+  <li class="list-group-item d-flex justify-content-between">
+    <span>TBR promedio</span><span id="avg"></span>
+  </li>
+  <li class="list-group-item d-flex justify-content-between">
+    <span>Pico más alto</span><span id="max"></span>
+  </li>
+  <li class="list-group-item d-flex justify-content-between">
+    <span>Pico más bajo</span><span id="min"></span>
+  </li>
+</ul>
+
+<script>
+fetch('/tbr_stats')
+  .then(r=>r.json())
+  .then(j=>{
+     if(j.error==='not_calibrated'){location='/calib';return;}
+     if(j.error==='no_data'){alert('No hay datos de esta sesión');return;}
+
+     const order = ['verde','naranja','rojo','azul'];
+     const names = {verde:'Verde',naranja:'Naranja',rojo:'Rojo',azul:'Azul'};
+     const tbody = document.getElementById('tblBody');
+
+     order.forEach(c=>{
+        tbody.insertAdjacentHTML('beforeend',
+          `<tr><td>${names[c]}</td><td>${j.porcentajes[c]} %</td></tr>`);
+     });
+     document.getElementById('avg').textContent = j.promedio;
+     document.getElementById('max').textContent = j.pico_max;
+     document.getElementById('min').textContent = j.pico_min;
+  });
+</script>
+{% endblock %}

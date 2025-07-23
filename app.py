@@ -70,6 +70,12 @@ def detectar_canal_eeg(df: pd.DataFrame) -> str | None:
             continue
     return None
 
+def color_tbr(v: float, tmin: float, tmax: float) -> str:
+    if v > tmax:                       return "rojo"
+    elif v > (tmin + tmax) / 2:        return "naranja"
+    elif v >= tmin:                    return "verde"
+    else:                              return "azul"
+
 # -------------------------------------------------------------------
 # Utilidades de señal
 # -------------------------------------------------------------------
@@ -131,6 +137,9 @@ time_buf = deque(maxlen=120)
 def home():
     return render_template("index.html")
 
+@app.route("/informacion")
+def informacion():
+    return render_template("informacion.html")
 
 # ---------- 1. Calibración personal --------------------------------
 
@@ -218,8 +227,36 @@ def tbr_stream():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+@app.route("/tbr_stats")
+def tbr_stats():
+    if "tbr_min" not in session or "tbr_max" not in session:
+        return jsonify({"error": "not_calibrated"}), 400
+    if not tbr_buf:
+        return jsonify({"error": "no_data"}), 400
+
+    tmin, tmax = session["tbr_min"], session["tbr_max"]
+    valores = list(tbr_buf)
+
+    # clasificación por color
+    colormap = {"rojo":0,"naranja":0,"verde":0,"azul":0}
+    for v in valores:
+        colormap[color_tbr(v, tmin, tmax)] += 1
+
+    total = len(valores)
+    porcentajes = {c: round(colormap[c] / total * 100, 1) for c in colormap}
+
+    stats = {
+        "promedio": round(sum(valores)/total, 2),
+        "pico_max": round(max(valores), 2),
+        "pico_min": round(min(valores), 2),
+        "porcentajes": porcentajes
+    }
+    return jsonify(stats)
 
 # ---------- 3. Endpoints auxiliares (gráfica, datos) ---------------
+@app.route("/resultados")
+def resultados():
+    return render_template("resultados.html")
 
 @app.route("/eeg_plot")
 def eeg_plot():
