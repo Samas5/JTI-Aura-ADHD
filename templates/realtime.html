@@ -3,12 +3,6 @@
 {% block content %}
 
 <style>
-  .gradient-bg {
-    background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-    color: white;
-    padding: 60px 20px;
-    border-radius: 12px;
-  }
   .btn-modal {
     background-color: #00c9a7;
     color: white;
@@ -18,14 +12,19 @@
     border: none;
     transition: background-color 0.3s ease;
   }
-  .btn-modal:hover { background-color: #00b191; }
+
+  .btn-modal:hover {
+    background-color: #00b191;
+  }
 
   .modal {
     display: none;
     position: fixed;
     z-index: 1000;
-    left: 0; top: 0;
-    width: 100%; height: 100%;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.6);
   }
@@ -47,7 +46,10 @@
     cursor: pointer;
     color: #aaa;
   }
-  .close:hover { color: #000; }
+
+  .close:hover {
+    color: #000;
+  }
 
   canvas {
     width: 100% !important;
@@ -68,23 +70,22 @@
     border-radius: 50%;
     border: 2px solid #555;
   }
+
+  .intro-text {
+    font-size: 1rem;
+    color: #eee;
+    max-width: 700px;
+    margin: 0 auto 30px;
+    text-align: center;
+  }
 </style>
 
-<div class="gradient-bg text-center">
-  <h2 class="mb-3">Calibrar EEG</h2>
-  <p>
-    Sube tus grabaciones de concentración y relajación para calibrar el sistema.
+<div class="text-center">
+  <h2 class="mb-3">Panel EEG en Tiempo Real</h2>
+  <p class="intro-text">
+    Observa tu actividad cerebral representada en una gráfica interactiva. El semáforo indica tu nivel de atención a partir del índice TBR (Theta/Beta Ratio),
+    utilizado comúnmente en estudios de TDAH. Esta herramienta es de carácter experimental y educativo.
   </p>
-
-  <div style="margin: 20px 0;">
-    <label><strong>Archivo de concentración:</strong></label><br>
-    <input type="file" id="fileActividad" accept=".csv"><br><br>
-
-    <label><strong>Archivo de relajación:</strong></label><br>
-    <input type="file" id="fileRelax" accept=".csv"><br><br>
-
-    <button class="btn-modal" onclick="calibrarDesdeArchivos()">Calibrar desde archivos</button>
-  </div>
 
   <button class="btn-modal" onclick="document.getElementById('eegModal').style.display='block'">
     Abrir gráfica en tiempo real
@@ -97,20 +98,22 @@
     <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
     <h3 class="mb-3">EEG en Tiempo Real (Canal 0)</h3>
 
+    <!-- Semáforo -->
     <div class="semaforo">
       <div id="semaforoCircle" class="circle"></div>
-      <div id="semaforoLabel">Esperando datos de TBR...</div>
+      <div id="semaforoLabel">Cargando TBR...</div>
     </div>
 
     <canvas id="eegChart"></canvas>
   </div>
 </div>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   const MAX_POINTS = 100;
-  const ctx = document.getElementById('eegChart').getContext('2d');
 
+  const ctx = document.getElementById('eegChart').getContext('2d');
   const eegChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -129,13 +132,23 @@
       scales: {
         x: {
           title: { display: true, text: 'Tiempo (s)' },
-          ticks: { maxTicksLimit: 10 }
+          ticks: {
+            callback: function (value) {
+              return parseFloat(value).toFixed(2);
+            },
+            maxTicksLimit: 10
+          }
         },
         y: {
           title: { display: true, text: 'Amplitud EEG' },
           suggestedMin: -100,
           suggestedMax: 100,
-          stepSize: 20
+          ticks: {
+            callback: function (value) {
+              return parseFloat(value).toFixed(2);
+            },
+            stepSize: 20
+          }
         }
       }
     }
@@ -157,76 +170,40 @@
   }
 
   async function fetchEEG() {
-    const res = await fetch('/eeg_data');
-    const json = await res.json();
-    if (json.signal && json.time) {
-      const time = json.time.map(t => parseFloat(t));
-      const signal = json.signal.map(s => parseFloat(s));
-      updateEEGChart(time, signal);
-    }
-  }
-
-  async function fetchTBR() {
-    const res = await fetch('/tbr_value');
-    const json = await res.json();
-
-    const tbr = parseFloat(json.tbr).toFixed(2);
-    const tbrMin = parseFloat(json.tbr_min);
-    const tbrMax = parseFloat(json.tbr_max);
-
-    const label = document.getElementById("semaforoLabel");
-    const circle = document.getElementById("semaforoCircle");
-
-    if (!isNaN(tbrMin) && !isNaN(tbrMax)) {
-      if (tbr < tbrMin) {
-        circle.style.background = "blue";
-        label.textContent = `TBR = ${tbr} → Estado relajado / distracción`;
-      } else if (tbr >= tbrMin && tbr <= tbrMax) {
-        circle.style.background = "green";
-        label.textContent = `TBR = ${tbr} → Atención óptima`;
-      } else {
-        circle.style.background = "red";
-        label.textContent = `TBR = ${tbr} → Posible hiperactividad`;
+    try {
+      const res = await fetch('/eeg_data');
+      const json = await res.json();
+      if (json.signal && json.time) {
+        const time = json.time.map(t => parseFloat(t));
+        const signal = json.signal.map(s => parseFloat(s));
+        updateEEGChart(time, signal);
       }
-    } else {
-      circle.style.background = "gray";
-      label.textContent = `TBR = ${tbr} → No calibrado aún.`;
+    } catch (err) {
+      console.error("Error obteniendo EEG:", err);
     }
   }
 
-  function calibrarDesdeArchivos() {
-  const actividadFile = document.getElementById('fileActividad').files[0];
-  const relajacionFile = document.getElementById('fileRelax').files[0];
-
-  if (!actividadFile || !relajacionFile) {
-    alert("Selecciona ambos archivos para calibrar.");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('actividad', actividadFile);
-  formData.append('relajacion', relajacionFile);
-
-  fetch('/calibrar_tbr', {
-    method: 'POST',
-    body: formData
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.tbr_min && data.tbr_max) {
-      alert("Calibrado con éxito:\nTBR Mínimo: " + data.tbr_min + "\nTBR Máximo: " + data.tbr_max);
-      window.location.href = "/realtime";  // <-- redirección aquí
-    } else {
-      alert("Error: No se recibieron valores válidos.\n" + JSON.stringify(data));
-    }
-  })
-  .catch(() => alert("Error en la calibración"));
+  async function fetchTBR(){
+  try{
+    const {tbr, tbr_min, tbr_max} = await (await fetch('/tbr_value')).json();
+    const t = tbr.toFixed(2), circle = document.getElementById('semaforoCircle');
+    let color, texto;
+    if      (tbr > tbr_max)            {color='red';    texto='Baja atención';}
+    else if (tbr > (tbr_min+tbr_max)/2){color='orange'; texto='Distracción';}
+    else if (tbr >= tbr_min)           {color='green';  texto='Óptimo';}
+    else                               {color='blue';   texto='Hiper‑arousal';}
+    circle.style.background=color;
+    document.getElementById('semaforoLabel').textContent = `TBR=${t} • ${texto}`;
+  }catch(e){console.error(e);}
 }
 
   setInterval(() => {
     fetchEEG();
     fetchTBR();
-  }, 1000);
+  }, 500);
+
+  fetchEEG();
+  fetchTBR();
 </script>
 
 {% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Calibrar TBR{% endblock %}
+
+{% block content %}
+<h2 class="text-center my-4">Calibración de TBR personalizada</h2>
+<p class="text-white mb-4 ">
+  1️⃣ Sube un CSV de <strong>relajación</strong> (30 s, ojos cerrados) <br>
+  2️⃣ Sube un CSV de <strong>tarea de atención</strong> (30 s, lectura o cálculo) <br>
+  3️⃣ Pulsa <em>Calibrar</em> y obtendrás tus umbrales.
+</p>
+
+<form id="calibForm" class="row g-4">
+  <!-- RELAJACIÓN -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light">
+        <span class="badge bg-primary">Paso 1</span> Relajación
+      </div>
+      <div class="card-body">
+        <input type="file" class="form-control" name="relajacion" accept=".csv" required>
+        <small class="text-muted text-white">CSV con la persona tranquila / ojos cerrados.</small>
+        <div class="mt-2" id="relStatus" style="display:none;">
+          <span class="badge bg-success">Archivo cargado ✔︎</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVIDAD -->
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-light">
+        <span class="badge bg-primary">Paso 2</span> Atención focalizada
+      </div>
+      <div class="card-body">
+        <input type="file" class="form-control" name="actividad" accept=".csv" required>
+        <small class="text-muted">CSV con la persona concentrada (leyendo, sumando…).</small>
+        <div class="mt-2" id="actStatus" style="display:none;">
+          <span class="badge bg-success">Archivo cargado ✔︎</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTÓN ENVIAR -->
+  <div class="col-12 text-center">
+    <button type="submit" class="btn btn-primary px-5">Calibrar</button>
+  </div>
+</form>
+
+<!-- RESULTADOS -->
+<div id="resultBox" class="mt-5 d-none">
+  <h4 class="mb-3">Resultados de calibración</h4>
+  <table class="table table-bordered w-auto">
+    <thead class="table-light">
+      <tr>
+        <th>Estado</th>
+        <th>TBR</th>
+      </tr>
+    </thead>
+    <tbody id="resultBody"></tbody>
+  </table>
+  <p class="fw-light text-muted" id="diffLine"></p>
+</div>
+
+<div id="errorBox" class="alert alert-danger d-none mt-4"></div>
+
+<!-- ===================== SCRIPTS ==============================-->
+<script>
+/* Indicadores de archivo cargado */
+const relInput = document.querySelector('input[name="relajacion"]');
+const actInput = document.querySelector('input[name="actividad"]');
+relInput.addEventListener('change', ()=> document.getElementById('relStatus').style.display = relInput.files.length ? 'block':'none');
+actInput.addEventListener('change', ()=> document.getElementById('actStatus').style.display = actInput.files.length ? 'block':'none');
+
+/* Enviar formulario */
+document.getElementById('calibForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const resultBox = document.getElementById('resultBox');
+  const resultBody = document.getElementById('resultBody');
+  const errorBox  = document.getElementById('errorBox');
+  resultBox.classList.add('d-none');
+  errorBox.classList.add('d-none');
+
+  try{
+    const res = await fetch('/calibrar_tbr', {method:'POST', body:fd});
+    const j   = await res.json();
+
+    if(j.ok){
+      /* Ordena valores para saber cuál es mayor/menor */
+      const rows = [
+        {estado:'Relajación',  tbr:j.tbr_max},
+        {estado:'Atención',    tbr:j.tbr_min}
+      ];
+      resultBody.innerHTML = rows.map(r=>`
+        <tr>
+          <td>${r.estado}</td>
+          <td class="${r.estado==='Relajación'?'text-danger':'text-success'} fw-bold">
+            ${r.tbr}
+          </td>
+        </tr>`).join('');
+
+      const dif = ((j.tbr_max - j.tbr_min) / j.tbr_min * 100).toFixed(1);
+      document.getElementById('diffLine').textContent =
+        `Diferencia relativa: ${dif}% de incremento de TBR entre atención y relajación.`
+      resultBox.classList.remove('d-none');
+    }else{
+      errorBox.textContent = j.error || 'Error desconocido';
+      errorBox.classList.remove('d-none');
+    }
+  }catch(err){
+    errorBox.textContent = 'Fallo de red o servidor.';
+    errorBox.classList.remove('d-none');
+  }
+});
+</script>
+{% endblock %}
