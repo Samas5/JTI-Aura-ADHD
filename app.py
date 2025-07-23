@@ -120,6 +120,9 @@ db = SQLAlchemy(app)  # (no se usa activamente, pero queda listo)
 # Conexión con el dispositivo EEG
 inlet = connect_to_aura()
 
+
+tbr_buf  = deque(maxlen=120)
+time_buf = deque(maxlen=120)
 # -------------------------------------------------------------------
 # Rutas Web
 # -------------------------------------------------------------------
@@ -172,24 +175,26 @@ def calibrar_tbr():
 
 @app.route("/tbr_value")
 def tbr_value():
-    """Calcula TBR en vivo y envía también los umbrales calibrados."""
+    # ← NUEVO: verifica que existan los umbrales en sesión
+    if "tbr_min" not in session or "tbr_max" not in session:
+        return jsonify({"error": "not_calibrated"}), 400
+
+    # --- lo que ya tenías ---
     try:
         tbr_live = calculate_tbr(get_eeg_samples(inlet, 2, 256))
         return jsonify({
             "tbr": tbr_live,
-            "tbr_min": session.get("tbr_min", 1.5),
-            "tbr_max": session.get("tbr_max", 4.5),
+            "tbr_min": session["tbr_min"],   # usa los reales, ya sabemos que existen
+            "tbr_max": session["tbr_max"],
         })
     except Exception as e:
         return jsonify({"error": str(e)})
 
-# ---------- 2‑bis · Stream de TBR en tiempo real --------------------
-MAX_PTS = 120                       # ~1 min si haces request cada 0.5 s
-tbr_buf  = deque(maxlen=MAX_PTS)
-time_buf = deque(maxlen=MAX_PTS)
-
 @app.route("/tbr_stream")
 def tbr_stream():
+    if "tbr_min" not in session or "tbr_max" not in session:
+        return jsonify({"error": "not_calibrated"}), 400
+
     """Devuelve arrays de tiempo (s) y TBR, más umbrales calibrados."""
     try:
         tbr_live = calculate_tbr(get_eeg_samples(inlet, 0.5, 256))  # 0.5 s
@@ -207,8 +212,8 @@ def tbr_stream():
         return jsonify({
             "t": times,
             "v": list(tbr_buf),
-            "tbr_min": session.get("tbr_min", 1.5),
-            "tbr_max": session.get("tbr_max", 4.5),
+            "tbr_min": session["tbr_min"],
+            "tbr_max": session["tbr_max"],
         })
     except Exception as e:
         return jsonify({"error": str(e)})

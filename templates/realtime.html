@@ -3,20 +3,18 @@
 
 {% block content %}
 <style>
-  /* --- CONTROLES ------------------------------------------------ */
+  /* --- CONTROLES --------------------------------------------- */
   .btn-modal{background:#00c9a7;color:#fff;font-size:1.2rem;padding:12px 30px;border-radius:30px;border:none;transition:.3s}
   .btn-modal:hover{background:#00b191}
-  /* --- MODAL ---------------------------------------------------- */
+  /* --- MODAL -------------------------------------------------- */
   .modal{display:none;position:fixed;z-index:1000;inset:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.6)}
   .modal-content{background:#fefefe;color:#000;margin:80px auto;padding:30px;border-radius:12px;width:90%;max-width:1000px}
   .close{float:right;font-size:28px;font-weight:bold;cursor:pointer;color:#aaa}
   .close:hover{color:#000}
-
-  /* --- CHARTS --------------------------------------------------- */
+  /* --- CHARTS ------------------------------------------------- */
   canvas{width:100%!important;height:400px!important}
   #tbrChart{height:400px!important}
   .circle{width:25px;height:25px;border-radius:50%;border:2px solid #555}
-
   .intro-text{font-size:1rem;color:#eee;max-width:700px;margin:0 auto 30px;text-align:center}
 </style>
 
@@ -25,13 +23,14 @@
   <p class="intro-text text-white">
     Observa tu actividad cerebral representada en una gráfica interactiva. El semáforo indica tu nivel de atención a partir del índice TBR (Theta/Beta Ratio).
   </p>
-  <button class="btn-modal" onclick="document.getElementById('eegModal').style.display='block'">Abrir gráfica en tiempo real</button>
+  <!-- ⇩ el botón ahora llama a openPanel() -->
+  <button class="btn-modal" onclick="openPanel()">Abrir gráfica en tiempo real</button>
 </div>
 
-<!-- Modal principal -->
+<!-- Modal -->
 <div id="eegModal" class="modal">
   <div class="modal-content">
-    <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
+    <span class="close" onclick="cerrarModal()">&times;</span>
 
     <!-- Semáforo -->
     <div class="semaforo">
@@ -39,75 +38,99 @@
       <div id="semaforoLabel">Cargando TBR...</div>
     </div>
 
-    <!-- Si quisieras re‑activar la señal EEG, descomenta la siguiente línea -->
-    <!-- <canvas id="eegChart"></canvas> -->
-
-    <!-- Gráfica de TBR personalizado -->
+    <!-- Gráfica TBR -->
     <h4 class="mt-4">TBR en tiempo real</h4>
     <canvas id="tbrChart"></canvas>
   </div>
 </div>
 
-<!-- Chart.js y plugin annotation -->
+<!-- Chart.js + annotation -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.2"></script>
 
 <script>
-  const REFRESH_MS = 500;           // medio segundo
-  const MAX_POINTS = 120;           // 1 min de historial
+/* ----------------- CONFIG ------------------- */
+const REFRESH_MS = 500, MAX_POINTS = 120;
+let loopID = null;        // guardará el setInterval cuando abramos el panel
 
-  /* -------------- GRÁFICA TBR --------------------- */
-  const tbrCtx = document.getElementById('tbrChart').getContext('2d');
-  const tbrChart = new Chart(tbrCtx, {
-    type:'line',
-    data:{labels:[],datasets:[{label:'TBR',data:[],borderColor:'#ffc107',backgroundColor:'rgba(255,193,7,.15)',pointRadius:0,tension:.3}]},
-    options:{animation:false,responsive:true,scales:{
-            x:{
-        grid:{display:true},   // o false si tampoco quieres la cuadrícula
-        ticks:{display:false}  // oculta solo las etiquetas numéricas
-      },
-
-      y:{title:{display:true,text:'TBR'},min:0,max:8,ticks:{stepSize:0.5,callback:v=>v.toFixed(1)}}
+/* ---------- Crear gráfico vacío ------------- */
+const tbrCtx = document.getElementById('tbrChart').getContext('2d');
+const tbrChart = new Chart(tbrCtx,{
+  type:'line',
+  data:{labels:[],datasets:[{label:'TBR',data:[],borderColor:'#ffc107',
+         backgroundColor:'rgba(255,193,7,.15)',pointRadius:0,tension:.3}]},
+  options:{animation:false,responsive:true,scales:{
+      x:{grid:{display:true},ticks:{display:false}},
+      y:{title:{display:true,text:'TBR'},min:0,max:8,
+         ticks:{stepSize:0.5,callback:v=>v.toFixed(1)}}
     },plugins:{legend:{display:false}}}
-  });
-  let zonaAnotada=false;
+});
+let zonaAnotada=false;
 
-  async function fetchTBRStream(){
-    try{
-      const res = await fetch('/tbr_stream');
-      const j   = await res.json();
-      if(j.error) return;
+/* ----------- Comunicaciones ----------------- */
+async function fetchTBRStream(){
+  try{
+    const res = await fetch('/tbr_stream');
+    const j   = await res.json();
 
-      // actualiza datos
-      tbrChart.data.labels = j.t;
-      tbrChart.data.datasets[0].data = j.v;
+    /* --- si no hay calibración, backend devuelve {error:'not_calibrated'} --- */
+    if(j.error === 'not_calibrated'){
+      window.location = '/calib';
+      return;
+    }
+    if(j.error) return;
 
-      // banda verde (umbral personalizado) solo 1ª vez
-      if(!zonaAnotada){
-        tbrChart.options.plugins.annotation={annotations:{zona:{type:'box',yMin:j.tbr_min,yMax:j.tbr_max,backgroundColor:'rgba(25,135,84,.15)'}}};
-        zonaAnotada=true;
+    /* actualizar gráfico */
+    tbrChart.data.labels = j.t;
+    tbrChart.data.datasets[0].data = j.v;
+
+    if(!zonaAnotada){
+      tbrChart.options.plugins.annotation = {
+        annotations:{zona:{type:'box',yMin:j.tbr_min,yMax:j.tbr_max,
+                           backgroundColor:'rgba(25,135,84,.15)'}}
+      };
+      zonaAnotada = true;
+    }
+    tbrChart.update('none');
+
+    /* actualizar semáforo */
+    actualizarSemaforo(j.v.at(-1), j.tbr_min, j.tbr_max);
+
+  }catch(e){console.error(e);}
+}
+
+/* -------------- Semáforo -------------------- */
+function actualizarSemaforo(tbr, tbr_min, tbr_max){
+  const t = tbr.toFixed(2), circle = document.getElementById('semaforoCircle');
+  let color, texto;
+  if     (tbr>tbr_max)                  {color='red';    texto='Baja atención';}
+  else if(tbr>(tbr_min+tbr_max)/2)      {color='orange'; texto='Distracción';}
+  else if(tbr>=tbr_min)                 {color='green';  texto='Óptimo';}
+  else                                  {color='blue';   texto='Hiper‑arousal';}
+  circle.style.background = color;
+  document.getElementById('semaforoLabel').textContent = `TBR=${t} • ${texto}`;
+}
+
+/* -------------- Abrir / cerrar -------------- */
+function openPanel(){
+  /* comprobación rápida: ¿ya calibrado? */
+  fetch('/tbr_value')
+    .then(r=>r.json())
+    .then(j=>{
+      if(j.error === 'not_calibrated'){
+        window.location = '/calib';
+        return;
       }
-      tbrChart.update('none');
+      document.getElementById('eegModal').style.display='block';
+      if(!loopID) loopID = setInterval(fetchTBRStream, REFRESH_MS);
+      fetchTBRStream();    // primer update inmediato
+    })
+    .catch(()=>window.location='/calib');
+}
 
-      // semáforo con último valor
-      actualizarSemaforo(j.v.at(-1), j.tbr_min, j.tbr_max);
-
-    }catch(e){console.error(e);}  }
-
-  /* ---------------- SEMÁFORO ---------------------- */
-  function actualizarSemaforo(tbr,tbr_min,tbr_max){
-    const t=tbr.toFixed(2),circle=document.getElementById('semaforoCircle');
-    let color,texto;
-    if     (tbr>tbr_max){color='red';texto='Baja atención';}
-    else if(tbr>(tbr_min+tbr_max)/2){color='orange';texto='Distracción';}
-    else if(tbr>=tbr_min){color='green';texto='Óptimo';}
-    else {color='blue';texto='Hiper‑arousal';}
-    circle.style.background=color;
-    document.getElementById('semaforoLabel').textContent = `TBR=${t} • ${texto}`;
-  }
-
-  /* ---------------- LOOP -------------------------- */
-  setInterval(fetchTBRStream, REFRESH_MS);
-  fetchTBRStream();
+function cerrarModal(){
+  document.getElementById('eegModal').style.display='none';
+  if(loopID){ clearInterval(loopID); loopID=null; }
+}
 </script>
 {% endblock %}
