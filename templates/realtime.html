@@ -1,175 +1,232 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>EEG en Tiempo Real - Modal</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
+{% extends 'base.html' %}
+{% block title %}Evaluación en Tiempo Real | EEG-TDAH{% endblock %}
+{% block content %}
 
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      padding-top: 50px;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0, 0, 0, 0.6);
-    }
+<style>
+  .gradient-bg {
+    background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+    color: white;
+    padding: 60px 20px;
+    border-radius: 12px;
+  }
+  .btn-modal {
+    background-color: #00c9a7;
+    color: white;
+    font-size: 1.2rem;
+    padding: 12px 30px;
+    border-radius: 30px;
+    border: none;
+    transition: background-color 0.3s ease;
+  }
+  .btn-modal:hover { background-color: #00b191; }
 
-    .modal-content {
-      background-color: #fefefe;
-      margin: auto;
-      padding: 20px;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 1200px;
-    }
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6);
+  }
 
-    .close {
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+  .modal-content {
+    background-color: #fefefe;
+    color: #000;
+    margin: 80px auto;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1000px;
+  }
 
-    canvas {
-      width: 100% !important;
-      height: 400px !important;
-    }
+  .close {
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #aaa;
+  }
+  .close:hover { color: #000; }
 
-    .semaforo {
-      margin: 10px 0;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      font-size: 18px;
-    }
+  canvas {
+    width: 100% !important;
+    height: 400px !important;
+  }
 
-    .circle {
-      width: 25px;
-      height: 25px;
-      border-radius: 50%;
-      border: 2px solid #555;
-    }
-  </style>
-</head>
-<body>
+  .semaforo {
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 18px;
+  }
 
-  <h2>Panel EEG</h2>
-  <button onclick="document.getElementById('eegModal').style.display='block'">Abrir gráfica en tiempo real</button>
+  .circle {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    border: 2px solid #555;
+  }
+</style>
 
-  <div id="eegModal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
-      <h3>EEG en Tiempo Real (Canal 0)</h3>
+<div class="gradient-bg text-center">
+  <h2 class="mb-3">Calibrar EEG</h2>
+  <p>
+    Sube tus grabaciones de concentración y relajación para calibrar el sistema.
+  </p>
 
-      <!-- Semáforo -->
-      <div class="semaforo">
-        <div id="semaforoCircle" class="circle"></div>
-        <div id="semaforoLabel">Cargando TBR...</div>
-      </div>
+  <div style="margin: 20px 0;">
+    <label><strong>Archivo de concentración:</strong></label><br>
+    <input type="file" id="fileActividad" accept=".csv"><br><br>
 
-      <canvas id="eegChart"></canvas>
-    </div>
+    <label><strong>Archivo de relajación:</strong></label><br>
+    <input type="file" id="fileRelax" accept=".csv"><br><br>
+
+    <button class="btn-modal" onclick="calibrarDesdeArchivos()">Calibrar desde archivos</button>
   </div>
 
-  <script>
-    const ctx = document.getElementById('eegChart').getContext('2d');
-    const eegChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'EEG Signal',
-          borderColor: 'blue',
-          data: [],
-          pointRadius: 0,
-          borderWidth: 1,
-        }]
-      },
-      options: {
-        animation: false,
-        responsive: true,
-        scales: {
-          x: {
-            title: { display: true, text: 'Tiempo (s)' },
-            min: 0,
-            max: 1,
-            ticks: {
-              callback: function(value) {
-                return value.toFixed(2);
-              },
-              maxTicksLimit: 11
-            }
-          },
-          y: {
-            title: { display: true, text: 'Amplitud EEG' },
-            suggestedMin: -100,
-            suggestedMax: 100,
-            ticks: {
-              callback: function(value) {
-                return parseFloat(value).toFixed(2);
-              },
-              stepSize: 20
-            }
-          }
-        }
-      }
-    });
+  <button class="btn-modal" onclick="document.getElementById('eegModal').style.display='block'">
+    Abrir gráfica en tiempo real
+  </button>
+</div>
 
-    async function fetchEEG() {
-      try {
-        const res = await fetch('/eeg_data');
-        const json = await res.json();
-        if (json.signal) {
-          eegChart.data.labels = json.time.map(t => parseFloat(t));
-          eegChart.data.datasets[0].data = json.signal.map(s => parseFloat(s).toFixed(2));
-          eegChart.update();
+<!-- Modal -->
+<div id="eegModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="document.getElementById('eegModal').style.display='none'">&times;</span>
+    <h3 class="mb-3">EEG en Tiempo Real (Canal 0)</h3>
+
+    <div class="semaforo">
+      <div id="semaforoCircle" class="circle"></div>
+      <div id="semaforoLabel">Esperando datos de TBR...</div>
+    </div>
+
+    <canvas id="eegChart"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const MAX_POINTS = 100;
+  const ctx = document.getElementById('eegChart').getContext('2d');
+
+  const eegChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'EEG Signal',
+        borderColor: 'blue',
+        data: [],
+        pointRadius: 0,
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      scales: {
+        x: {
+          title: { display: true, text: 'Tiempo (s)' },
+          ticks: { maxTicksLimit: 10 }
+        },
+        y: {
+          title: { display: true, text: 'Amplitud EEG' },
+          suggestedMin: -100,
+          suggestedMax: 100,
+          stepSize: 20
         }
-      } catch (err) {
-        console.error("Error obteniendo EEG:", err);
       }
     }
+  });
 
-    async function fetchTBR() {
-      try {
-        const res = await fetch('/tbr_value');
-        const json = await res.json();
-        const tbr = parseFloat(json.tbr).toFixed(2);
-        const label = document.getElementById("semaforoLabel");
-        const circle = document.getElementById("semaforoCircle");
+  function updateEEGChart(time, signal) {
+    const labels = eegChart.data.labels;
+    const data = eegChart.data.datasets[0].data;
 
-        if (tbr > 4.5) {
-          circle.style.background = "red";
-          label.textContent = `TBR = ${tbr} → Alto (TDAH tipo inatento)`;
-        } else if (tbr >= 3.0) {
-          circle.style.background = "orange";
-          label.textContent = `TBR = ${tbr} → Posible distracción/somnolencia`;
-        } else if (tbr >= 1.5) {
-          circle.style.background = "green";
-          label.textContent = `TBR = ${tbr} → Óptimo (atención equilibrada)`;
-        } else {
-          circle.style.background = "blue";
-          label.textContent = `TBR = ${tbr} → Hiperactividad / ansiedad`;
-        }
-      } catch (err) {
-        console.error("Error obteniendo TBR:", err);
-      }
+    for (let i = 0; i < time.length; i++) {
+      labels.push(time[i]);
+      data.push(signal[i]);
     }
 
-    setInterval(() => {
-      fetchEEG();
-      fetchTBR();
-    }, 1000);
+    while (labels.length > MAX_POINTS) labels.shift();
+    while (data.length > MAX_POINTS) data.shift();
 
+    eegChart.update('none');
+  }
+
+  async function fetchEEG() {
+    const res = await fetch('/eeg_data');
+    const json = await res.json();
+    if (json.signal && json.time) {
+      const time = json.time.map(t => parseFloat(t));
+      const signal = json.signal.map(s => parseFloat(s));
+      updateEEGChart(time, signal);
+    }
+  }
+
+  async function fetchTBR() {
+    const res = await fetch('/tbr_value');
+    const json = await res.json();
+
+    const tbr = parseFloat(json.tbr).toFixed(2);
+    const tbrMin = parseFloat(json.tbr_min);
+    const tbrMax = parseFloat(json.tbr_max);
+
+    const label = document.getElementById("semaforoLabel");
+    const circle = document.getElementById("semaforoCircle");
+
+    if (!isNaN(tbrMin) && !isNaN(tbrMax)) {
+      if (tbr < tbrMin) {
+        circle.style.background = "blue";
+        label.textContent = `TBR = ${tbr} → Estado relajado / distracción`;
+      } else if (tbr >= tbrMin && tbr <= tbrMax) {
+        circle.style.background = "green";
+        label.textContent = `TBR = ${tbr} → Atención óptima`;
+      } else {
+        circle.style.background = "red";
+        label.textContent = `TBR = ${tbr} → Posible hiperactividad`;
+      }
+    } else {
+      circle.style.background = "gray";
+      label.textContent = `TBR = ${tbr} → No calibrado aún.`;
+    }
+  }
+
+  function calibrarDesdeArchivos() {
+  const actividadFile = document.getElementById('fileActividad').files[0];
+  const relajacionFile = document.getElementById('fileRelax').files[0];
+
+  if (!actividadFile || !relajacionFile) {
+    alert("Selecciona ambos archivos para calibrar.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('actividad', actividadFile);
+  formData.append('relajacion', relajacionFile);
+
+  fetch('/calibrar_tbr', {
+    method: 'POST',
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.tbr_min && data.tbr_max) {
+      alert("Calibrado con éxito:\nTBR Mínimo: " + data.tbr_min + "\nTBR Máximo: " + data.tbr_max);
+      window.location.href = "/realtime";  // <-- redirección aquí
+    } else {
+      alert("Error: No se recibieron valores válidos.\n" + JSON.stringify(data));
+    }
+  })
+  .catch(() => alert("Error en la calibración"));
+}
+
+  setInterval(() => {
     fetchEEG();
     fetchTBR();
-  </script>
-</body>
-</html>
+  }, 1000);
+</script>
+
+{% endblock %}

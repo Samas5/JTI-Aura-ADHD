@@ -1,14 +1,69 @@
-<!-- templates/index.html -->
-{% extends 'base.html' %} {% block title %}Inicio | EEG-TDAH{% endblock %} {%
-block content %}
-<div class="text-center">
-  <h1 class="mb-4">Bienvenido a la Plataforma EEG-TDAH</h1>
-  <p class="lead">
-    Esta plataforma mide la atención del usuario con juegos interactivos y EEG.
-  </p>
-  <p>
-    AYUDAME DIOSITOOOO
-  </p>
-  <a href="/juego" class="btn btn-primary mt-4">Iniciar Evaluación</a>
+{% extends 'base.html' %}
+{% block title %}Inicio | EEG-TDAH{% endblock %}
+{% block content %}
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+
+  body {
+    background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+    color: white;
+  }
+
+  .hero-section {
+    min-height: 100vh;
+    width: 100%;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-section h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    font-weight: 700;
+  }
+
+  .hero-section p {
+    font-size: 1.25rem;
+    margin-bottom: 30px;
+    max-width: 700px;
+  }
+
+  .search-bar {
+    max-width: 500px;
+    width: 100%;
+    margin-bottom: 30px;
+  }
+
+  .btn-eeg {
+    background-color: #00c9a7;
+    color: white;
+    font-size: 1.2rem;
+    padding: 12px 30px;
+    border-radius: 30px;
+    transition: background-color 0.3s ease;
+    border: none;
+  }
+
+  .btn-eeg:hover {
+    background-color: #00b191;
+  }
+</style>
+
+<div class="hero-section">
+  <h1>Bienvenido a EEG-TDAH</h1>
+  <p class="lead">Evalúa tu nivel de atención de forma interactiva con tecnología EEG.</p>
+
+  
+  <a href="/juego" class="btn btn-eeg">Iniciar Evaluación</a>
 </div>
+
 {% endblock %}

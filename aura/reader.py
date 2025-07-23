@@ -42,7 +42,7 @@ def connect_to_aura(name='AURA', stream_type='EEG'):
         raise
 
 
-def get_eeg_samples(inlet, duration_sec=2, fs=256):
+def get_eeg_samples(inlet, duration_sec=2, fs=250):
     """
     Lee datos EEG desde Aura durante cierto tiempo (en segundos).
     Devuelve una lista de muestras, cada muestra es una lista por canal.

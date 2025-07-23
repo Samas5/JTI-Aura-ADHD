@@ -1,12 +1,48 @@
 import os
 import io
 import base64
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template,session, jsonify,request
 from flask_sqlalchemy import SQLAlchemy
 from matplotlib import pyplot as plt
 import numpy as np
 from aura.reader import connect_to_aura, get_eeg_samples
 from aura.processor import calculate_tbr
+import time
+import pandas as pd
+
+
+def calcular_theta_beta(signal, fs):
+    from scipy.signal import welch
+    freqs, psd = welch(signal, fs=fs, nperseg=fs*2)
+    theta_power = np.sum(psd[(freqs >= 4) & (freqs <= 8)])
+    beta_power = np.sum(psd[(freqs >= 12) & (freqs <= 30)])
+    return theta_power, beta_power
+
+def procesar_eeg_dataframe(df, canal='F5', fs=256, ventana_seg=2):
+    # Limpiar nombres de columna
+    df.columns = df.columns.str.strip().str.replace("'", "")
+
+    if canal not in df.columns:
+        raise ValueError(f"El canal '{canal}' no está presente en el archivo.")
+
+    señal = df[canal].dropna().astype(float).values
+    muestras_por_ventana = fs * ventana_seg
+
+    theta_vals = []
+    beta_vals = []
+
+    for i in range(0, len(señal), muestras_por_ventana):
+        ventana = señal[i:i + muestras_por_ventana]
+        if len(ventana) < muestras_por_ventana:
+            break
+        theta, beta = calcular_theta_beta(ventana, fs)
+        theta_vals.append(theta)
+        beta_vals.append(beta)
+
+    df_out = pd.DataFrame({'theta': theta_vals, 'beta': beta_vals})
+    return df_out
+
+
 
 # Configuración de la base de datos
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -14,6 +50,7 @@ db = SQLAlchemy()
 
 # Crear la app de Flask
 app = Flask(__name__)
+app.secret_key = 'clave_super_secreta_123'  # <-- AGREGA ESTA LÍNEA
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
@@ -97,14 +134,56 @@ def realtime():
 def popup():
     return render_template("realtime_popup.html")
 
-@app.route("/tbr_value")
-def tbr_value():
+
+    
+@app.route('/calib')
+def calibrar():
+    return render_template('calib.html')
+
+@app.route('/calibrar_tbr', methods=['POST'])
+def calibrar_tbr():
     try:
-        eeg_data = get_eeg_samples(inlet, duration_sec=2, fs=256)
-        tbr_value = calculate_tbr(eeg_data, fs=256, channel_index=0)
-        return jsonify({"tbr": tbr_value})
+        actividad_file = request.files['actividad']
+        relajacion_file = request.files['relajacion']
+
+        if not actividad_file or not relajacion_file:
+            return jsonify({"error": "Faltan archivos"}), 400
+
+        df_actividad = pd.read_csv(actividad_file, skiprows=2)
+        df_relajacion = pd.read_csv(relajacion_file, skiprows=2)
+
+        # 🔧 LIMPIAR LOS NOMBRES DE COLUMNA AQUÍ TAMBIÉN
+        df_actividad.columns = df_actividad.columns.str.strip().str.replace("'", "")
+        df_relajacion.columns = df_relajacion.columns.str.strip().str.replace("'", "")
+
+        canal = 'F3'
+
+        df_act = procesar_eeg_dataframe(df_actividad, canal)
+        df_rel = procesar_eeg_dataframe(df_relajacion, canal)
+
+        # Calcular TBR (theta/beta) promedio
+        tbrs_actividad = (df_act["theta"] / df_act["beta"]).dropna()
+        tbrs_relajacion = (df_rel["theta"] / df_rel["beta"]).dropna()
+
+        if len(tbrs_actividad) == 0 or len(tbrs_relajacion) == 0:
+            return jsonify({"error": "No se pudieron calcular TBRs"}), 400
+
+        tbr_max = round(tbrs_relajacion.mean(), 2)  # relajación → más theta
+        tbr_min = round(tbrs_actividad.mean(), 2)   # concentración → menos theta
+
+        # Guardar en sesión
+        session['tbr_min'] = tbr_min
+        session['tbr_max'] = tbr_max
+
+        return jsonify({
+            "status": "ok",
+            "tbr_min": tbr_min,
+            "tbr_max": tbr_max
+        })
+
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
