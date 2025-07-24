@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block title %}Attention Tests | EEG-ADHD{% endblock %}
+{% block content %}
+
+<style>
+  .pruebas-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  .pruebas-header {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+
+  .pruebas-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #00c9a7;
+  }
+
+  .pruebas-header p {
+    font-size: 1.2rem;
+    color: #e0e0e0;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .pruebas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    margin-top: 40px;
+  }
+
+  @media (max-width: 768px) {
+    .pruebas-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .prueba-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 30px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid transparent;
+  }
+
+  .prueba-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 201, 167, 0.3);
+    border-color: #00c9a7;
+  }
+
+  .prueba-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: #00c9a7;
+  }
+
+  .prueba-card p {
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+
+  .prueba-info {
+    background: rgba(0, 201, 167, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .prueba-info small {
+    color: #00c9a7;
+    font-weight: 600;
+  }
+
+  .btn-prueba {
+    background-color: #00c9a7;
+    color: white;
+    font-size: 1.1rem;
+    padding: 12px 25px;
+    border-radius: 25px;
+    transition: background-color 0.3s ease;
+    border: none;
+    text-decoration: none;
+    display: inline-block;
+    width: 100%;
+  }
+
+  .btn-prueba:hover {
+    background-color: #00b191;
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-prueba:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+  }
+
+  .alert-info {
+    background: rgba(0, 201, 167, 0.2);
+    border: 1px solid #00c9a7;
+    color: #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+
+  .icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: #00c9a7;
+  }
+</style>
+
+<div class="pruebas-container">
+  <div class="pruebas-header">
+    <h1>Attention Tests</h1>
+    <p>Evaluate different aspects of your attention and concentration through interactive tests that measure your brain activity in real time.</p>
+  </div>
+
+  <div class="alert alert-info">
+    <strong>📋 Instructions:</strong> Make sure you have your EEG device connected before starting any test. Each test will evaluate different cognitive aspects related to ADHD.
+  </div>
+
+  <div class="pruebas-grid">
+    <!-- Test 1: Memory Game -->
+    <div class="prueba-card">
+      <div class="icon">🃏</div>
+      <h3>Test 1: Memory Game</h3>
+      <div class="prueba-info">
+        <small>Duration: 4 minutes | Difficulty: Basic</small>
+      </div>
+      <p>Evaluate your working memory through a card game. You must find pairs of matching cards by remembering their positions.</p>
+      <a href="/memorama" class="btn btn-prueba">Start Memory Game</a>
+    </div>
+
+    <!-- Test 2: Stroop Test -->
+    <div class="prueba-card">
+      <div class="icon">🌈</div>
+      <h3>Test 2: Stroop Test</h3>
+      <div class="prueba-info">
+        <small>Duration: 3 minutes | Difficulty: Intermediate</small>
+      </div>
+      <p>Measure your inhibitory control and cognitive flexibility. You must identify the color of words while ignoring their meaning.</p>
+      <a href="/stroop" class="btn btn-prueba">Start Stroop Test</a>
+    </div>
+
+    <!-- Test 3: Focus Hunter -->
+    <div class="prueba-card">
+      <div class="icon">🎯</div>
+      <h3>Test 3: Focus Hunter</h3>
+      <div class="prueba-info">
+        <small>Duration: 6 minutes | Difficulty: Advanced</small>
+      </div>
+      <p>Evaluate your sustained attention through a continuous vigilance task. You must respond only to specific stimuli.</p>
+      <a href="/focus_hunter" class="btn btn-prueba">Start Focus Hunter</a>
+    </div>
+  </div>
+
+  <div class="text-center mt-5">
+    <p class="text-muted">💡 <strong>Tip:</strong> For more accurate results, perform the tests in a quiet environment without distractions.</p>
+  </div>
+</div>
+
+{% endblock %}

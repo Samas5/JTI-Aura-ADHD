@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}Resumen de sesión{% endblock %}
 {% block content %}
-<h2 class="mb-4 text-center text-white">Resumen TBR</h2>
+<h2 class="mb-4 text-center text-white">TBR Summary</h2>
 
 <table class="table table-dark w-auto mx-auto">
-  <thead><tr><th>Color</th><th>% del tiempo</th></tr></thead>
+  <thead><tr><th>Color</th><th>% of time</th></tr></thead>
   <tbody id="tblBody"></tbody>
 </table>
 
 <ul class="list-group w-auto mx-auto">
   <li class="list-group-item d-flex justify-content-between">
-    <span>TBR promedio</span><span id="avg"></span>
+    <span>Average TBR</span><span id="avg"></span>
   </li>
   <li class="list-group-item d-flex justify-content-between">
     <span>Pico más alto</span><span id="max"></span>
@@ -25,7 +25,7 @@ fetch('/tbr_stats')
   .then(r=>r.json())
   .then(j=>{
      if(j.error==='not_calibrated'){location='/calib';return;}
-     if(j.error==='no_data'){alert('No hay datos de esta sesión');return;}
+     if(j.error==='no_data'){alert('No data from this session');return;}
 
      const order = ['verde','naranja','rojo','azul'];
      const names = {verde:'Verde',naranja:'Naranja',rojo:'Rojo',azul:'Azul'};

@@ -1,73 +1,243 @@
-{% extends 'base.html' %}
-{% block title %}Inicio | EEG-TDAH{% endblock %}
-{% block content %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Información</title>
-</head>
-<body>
+{% extends 'base.html' %} {% block title %}Information | EEG-ADHD{% endblock %}
+{% set disable_main_padding = True %} {% block content %}
+
+<div class="container-fluid flex-grow-1 d-flex flex-column p-0">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 rounded-1">
+    <div class="container-fluid">
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#infoNavbar"
+        aria-controls="infoNavbar"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="infoNavbar">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" aria-current="page" href="#what-is-aura"
+              >What is AURA?</a
+            >
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#what-is-tbr">What is TBR?</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#tools-eeg">Fourier Transform (FFT)</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#why-crown-array">Why the Crown Array?</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#welch-method">Welch Method in EEG</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex-grow-1 p-4">
+    <div class="blog-post">
+      <h1 id="what-is-aura">What is AURA?</h1>
+      <p>
+        <strong>Aura</strong> is a biosensing system designed to measure brain
+        activity using EEG (electroencephalographic) technology. It is composed
+        of three main elements:
+      </p>
+      <ul>
+        <li><strong>Software</strong></li>
+        <li>A <strong>biosensor board</strong></li>
+        <li>And an <strong>EEG cap with electrodes</strong></li>
+      </ul>
+      <p>
+        Its goal is to make these technologies accessible for researchers,
+        creatives, and scientists, by offering a more affordable alternative to
+        traditional professional devices.
+      </p>
+
+      <hr />
+
+      <h2>History of Aura</h2>
+
+      <h3>2018 – Aura 00:</h3>
+      <p>
+        Dr. Christian Peñaloza, with a PhD in cognitive neuroscience applied to
+        robotics, found that EEG devices were too expensive (around $16,000
+        USD). For this reason, along with a group of experts, he developed
+        <strong>Aura 00</strong>, managing to reduce the cost to $3,500 USD.
+      </p>
+
+      <h3>2019 – Aura 01:</h3>
+      <p>
+        In collaboration with the Mexican creative agency
+        <strong>de la O design studio</strong>, the design of the EEG cap was
+        improved. This version integrated more formal patterns and 3D printed
+        electrodes.
+      </p>
+
+      <h3>Aura 02 (Recent):</h3>
+      <p>
+        Developed by former student Gerardo Soler along with the Mexican studio
+        <strong>Soon Studio</strong>, this new version includes an EEG cap with
+        screen printing to identify the position of the electrodes and a more
+        resistant and thinner biosensor board casing, manufactured with
+        Selective Laser Sintering (SLS) technology.
+      </p>
+      <p class="source">(Mirai Innovation Research Institute, 2022)</p>
+
+      <hr />
+
+      <h1 id="what-is-tbr" class="mt-5">What is TBR?</h1>
+      <p>
+        The Theta‑Beta Ratio (TBR) is a metric obtained from an
+        electroencephalogram (EEG) that compares the power of theta (4–7 Hz) and
+        beta (13–30 Hz) waves in the brain:
+      </p>
+      <ul>
+        <li>
+          <strong>Theta waves (4–7 Hz):</strong> associated with states of rest,
+          drowsiness, or memory and learning processes.
+        </li>
+        <li>
+          <strong>Beta waves (13–30 Hz):</strong> reflect attention,
+          concentration, and an active state of wakefulness.
+        </li>
+      </ul>
+      <p>
+        The TBR is obtained by dividing the theta power by the beta power in
+        specific scalp regions (e.g., frontal or at Cz).
+      </p>
+
+      <h3>What is it used for?</h3>
+      <p><strong>Cognitive Biomarker</strong></p>
+      <ul>
+        <li>
+          An elevated TBR usually indicates lower executive control or reduced
+          attention.
+        </li>
+        <li>
+          Its use has been proposed in disorders such as ADHD, anxiety, or
+          cognitive impairment.
+        </li>
+      </ul>
+
+      <h3>In ADHD</h3>
+      <ul>
+        <li>
+          The NEBA system, approved by the FDA in 2013, uses TBR as a diagnostic
+          aid in children aged 6 to 17 years.
+        </li>
+        <li>
+          Early research (Monastra et al. 1999) showed 86–98% accuracy, but
+          subsequent meta-analyses found less consistent results.
+        </li>
+        <li>
+          Recent studies show low sensitivity; TBR does not adequately
+          distinguish between children with and without ADHD.
+        </li>
+      </ul>
+
+      <h3>Neurofeedback</h3>
+      <ul>
+        <li>
+          Protocols that seek to reduce TBR through neurofeedback have shown
+          improvements in self-control (e.g., anxiety, focus), although some
+          studies in healthy individuals found null effects.
+        </li>
+      </ul>
+
+      <hr />
+
+      <h1 id="tools-eeg" class="mt-5">Fourier Transform (FFT)</h1>
+      <p>
+        This tool converts a signal from the time domain to the frequency
+        domain.
+      </p>
+      <h3>What do you get?</h3>
+      <ul>
+        <li>On the X-axis: frequencies (Hz).</li>
+        <li>On the Y-axis: power or energy of each frequency (µV² or dB).</li>
+      </ul>
+      <p>This allows you to see peaks in:</p>
+      <ul>
+        <li>6 Hz → indicates theta</li>
+        <li>18 Hz → indicates beta</li>
+      </ul>
+      <p class="source">(The Normal Awake EEG, n.d.)</p>
+
+      <h1 id="why-crown-array" class="mt-5">Why the Crown Array Works</h1>
+      <h3>Strategic Coverage of Key Regions:</h3>
+      <p>The array covers three essential lobes:</p>
+      <ul>
+        <li>
+          <strong>Frontal (F3, F2, F4)</strong> → Executive processes,
+          attention, decision-making.
+        </li>
+        <li>
+          <strong>Central (C3, C4)</strong> → Sensorimotor integration,
+          important for rapid cognitive responses.
+        </li>
+        <li>
+          <strong>Parietal (P3, P2, P4)</strong> → Sensory processing, visual
+          and spatial attention, and working memory.
+        </li>
+      </ul>
+      <h3>Interhemispheric Symmetry:</h3>
+      <p>
+        It allows you to compare activity between the right and left
+        hemispheres, which is key in studies of ADHD and other cognitive
+        disorders, where an imbalance is often observed.
+      </p>
+      <h3>High Sensitivity to Theta and Beta Waves:</h3>
+      <p>
+        Frontal and parietal regions are especially sensitive to theta (4–8 Hz)
+        and beta (13–30 Hz) waves, which are precisely those analyzed to assess
+        attention levels or ADHD symptoms.
+      </p>
+      <h3>Scientific Basis:</h3>
+      <p>
+        "Frontal and parietal lobes are consistently associated with attention
+        and working memory. Theta activity is dominant in frontal midline
+        regions during focused attention, while beta rhythms are observed in
+        parietal areas during active cognitive engagement (Klimesch, 1999)
+      </p>
+
+      <h1 id="welch-method" class="mt-5">Welch Method in EEG</h1>
+      <p>
+        The Welch method is used to obtain the energy of each signal at a
+        frequency more precisely and with less noise. It obtains the Power
+        Spectral Density (PSD) of a signal; in an electroencephalogram, it
+        serves to obtain the PSD of theta, beta, etc.
+      </p>
+      <p>
+        The procedure is performed by dividing the signal obtained from the EEG
+        into smaller parts (windows) to obtain more precise values.
+        Additionally, it overlaps the windows with each other, for example, by
+        50% to avoid loss of information. After each of the windows, the Fourier
+        Transform is applied to obtain the spectrum, and from there, they are
+        averaged to obtain a more precise PSD.
+      </p>
+      <p class="source">
+        (Low-Complexity Welch Power Spectral Density Computation, 2014)
+      </p>
+    </div>
+  </div>
+</div>
+
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
+  .blog-post {
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 30px;
+    border-radius: 8px;
+    min-height: calc(100vh - 200px);
   }
 
-  body {
-    background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-    color: white;
-  }
-
-  .hero-section {
-    min-height: 100vh;
-    width: 100%;
-    padding: 40px 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-  }
-
-  .hero-section h1 {
-    font-size: 3rem;
-    margin-bottom: 20px;
-    font-weight: 700;
-  }
-
-  .hero-section p {
-    font-size: 1.25rem;
-    margin-bottom: 30px;
-    max-width: 700px;
-  }
-
-  .search-bar {
-    max-width: 500px;
-    width: 100%;
-    margin-bottom: 30px;
-  }
-
-  .btn-eeg {
-    background-color: #00c9a7;
-    color: white;
-    font-size: 1.2rem;
-    padding: 12px 30px;
-    border-radius: 30px;
-    transition: background-color 0.3s ease;
-    border: none;
-  }
-
-  .btn-eeg:hover {
-    background-color: #00b191;
+  .p-4 {
+    padding-top: 20px !important;
   }
 </style>
-<div class="hero-section">
-  <h1>Bienvenido a EEG-TDAH</h1>
-  <p class="lead">Evalúa tu nivel de atención de forma interactiva con tecnología EEG.</p>
-</div>
-</body>
-</html>
+
 {% endblock %}

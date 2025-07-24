@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Calibrar TBR{% endblock %}
+{% block title %}Calibrate TBR{% endblock %}
 
 {% block content %}
-<h2 class="text-center my-4">Calibración de TBR personalizada</h2>
+<h2 class="text-center my-4">Personalized TBR Calibration</h2>
 <p class="text-white mb-4 ">
-  1️⃣ Sube un CSV de <strong>relajación</strong> (30 s, ojos cerrados) <br>
-  2️⃣ Sube un CSV de <strong>tarea de atención</strong> (30 s, lectura o cálculo) <br>
-  3️⃣ Pulsa <em>Calibrar</em> y obtendrás tus umbrales.
+  1️⃣ Upload a CSV from <strong>relaxation</strong> (30 s, eyes closed) <br>
+  2️⃣ Upload a CSV from <strong>attention task</strong> (30 s, reading or calculation) <br>
+  3️⃣ Press <em>Calibrate</em> and you will get your thresholds.
 </p>
 
 <form id="calibForm" class="row g-4">
@@ -14,13 +14,13 @@
   <div class="col-md-6">
     <div class="card shadow-sm h-100">
       <div class="card-header bg-light">
-        <span class="badge bg-primary">Paso 1</span> Relajación
+        <span class="badge bg-primary">Step 1</span> Relaxation
       </div>
       <div class="card-body">
         <input type="file" class="form-control" name="relajacion" accept=".csv" required>
-        <small class="text-muted text-white">CSV con la persona tranquila / ojos cerrados.</small>
+        <small class="text-muted text-white">CSV with the person calm / eyes closed.</small>
         <div class="mt-2" id="relStatus" style="display:none;">
-          <span class="badge bg-success">Archivo cargado ✔︎</span>
+          <span class="badge bg-success">File loaded ✔︎</span>
         </div>
       </div>
     </div>
@@ -30,13 +30,13 @@
   <div class="col-md-6">
     <div class="card shadow-sm h-100">
       <div class="card-header bg-light">
-        <span class="badge bg-primary">Paso 2</span> Atención focalizada
+        <span class="badge bg-primary">Step 2</span> Focused attention
       </div>
       <div class="card-body">
         <input type="file" class="form-control" name="actividad" accept=".csv" required>
-        <small class="text-muted">CSV con la persona concentrada (leyendo, sumando…).</small>
+        <small class="text-muted">CSV with the person concentrated (reading, adding...).</small>
         <div class="mt-2" id="actStatus" style="display:none;">
-          <span class="badge bg-success">Archivo cargado ✔︎</span>
+          <span class="badge bg-success">File loaded ✔︎</span>
         </div>
       </div>
     </div>
@@ -44,17 +44,17 @@
 
   <!-- BOTÓN ENVIAR -->
   <div class="col-12 text-center">
-    <button type="submit" class="btn btn-primary px-5">Calibrar</button>
+    <button type="submit" class="btn btn-primary px-5">Calibrate</button>
   </div>
 </form>
 
 <!-- RESULTADOS -->
 <div id="resultBox" class="mt-5 d-none">
-  <h4 class="mb-3">Resultados de calibración</h4>
+  <h4 class="mb-3">Calibration Results</h4>
   <table class="table table-bordered w-auto">
     <thead class="table-light">
       <tr>
-        <th>Estado</th>
+        <th>State</th>
         <th>TBR</th>
       </tr>
     </thead>
@@ -90,27 +90,27 @@ document.getElementById('calibForm').addEventListener('submit', async e=>{
     if(j.ok){
       /* Ordena valores para saber cuál es mayor/menor */
       const rows = [
-        {estado:'Relajación',  tbr:j.tbr_max},
-        {estado:'Atención',    tbr:j.tbr_min}
+        {estado:'Relaxation',  tbr:j.tbr_max},
+        {estado:'Attention',    tbr:j.tbr_min}
       ];
       resultBody.innerHTML = rows.map(r=>`
         <tr>
           <td>${r.estado}</td>
-          <td class="${r.estado==='Relajación'?'text-danger':'text-success'} fw-bold">
+          <td class="${r.estado==='Relaxation'?'text-danger':'text-success'} fw-bold">
             ${r.tbr}
           </td>
         </tr>`).join('');
 
       const dif = ((j.tbr_max - j.tbr_min) / j.tbr_min * 100).toFixed(1);
       document.getElementById('diffLine').textContent =
-        `Diferencia relativa: ${dif}% de incremento de TBR entre atención y relajación.`
+        `Relative difference: ${dif}% TBR increase between attention and relaxation.`
       resultBox.classList.remove('d-none');
     }else{
-      errorBox.textContent = j.error || 'Error desconocido';
+      errorBox.textContent = j.error || 'Unknown error';
       errorBox.classList.remove('d-none');
     }
   }catch(err){
-    errorBox.textContent = 'Fallo de red o servidor.';
+    errorBox.textContent = 'Network or server failure.';
     errorBox.classList.remove('d-none');
   }
 });

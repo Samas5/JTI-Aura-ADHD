@@ -135,8 +135,14 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)  # (no se usa activamente, pero queda listo)
 
-# Conexión con el dispositivo EEG
-inlet = connect_to_aura()
+# Conexión con el dispositivo EEG (manejo de errores)
+try:
+    inlet = connect_to_aura()
+    print("✅ Dispositivo EEG conectado correctamente")
+except Exception as e:
+    print(f"⚠️ No se pudo conectar al dispositivo EEG: {e}")
+    print("📱 La aplicación funcionará en modo sin EEG")
+    inlet = None
 
 
 tbr_buf  = deque(maxlen=120)
@@ -239,20 +245,55 @@ def reset_stats():
 
 @app.route("/tbr_value")
 def tbr_value():
-    # ← NUEVO: verifica que existan los umbrales en sesión
-    if "tbr_min" not in session or "tbr_max" not in session:
-        return jsonify({"error": "not_calibrated"}), 400
-
-    # --- lo que ya tenías ---
-    try:
-        tbr_live = calculate_tbr(get_eeg_samples(inlet, 2, 256))
+    # Verificar si hay conexión EEG
+    if inlet is None:
+        # Modo simulación: generar TBR simulado
+        import random
+        simulated_tbr = round(random.uniform(0.8, 2.5), 2)
         return jsonify({
+            "tbr_value": simulated_tbr,
+            "tbr": simulated_tbr,
+            "tbr_min": 1.0,  # Valores por defecto para simulación
+            "tbr_max": 2.0,
+            "status": "simulated",
+            "message": "Modo simulación - EEG desconectado",
+            "simulated": True
+        })
+    
+    # Verificar calibración
+    if "tbr_min" not in session or "tbr_max" not in session:
+        return jsonify({
+            "error": "not_calibrated",
+            "message": "Sistema no calibrado. Ve a Calibración para establecer los umbrales personales.",
+            "tbr_value": None,
+            "tbr_min": None,
+            "tbr_max": None
+        }), 200  # Cambiar a 200 para que el frontend pueda manejar el error
+
+    # Obtener datos EEG y calcular TBR
+    try:
+        eeg_samples = get_eeg_samples(inlet, 2, 256)
+        if not eeg_samples or len(eeg_samples) == 0:
+            return jsonify({
+                "error": "no_data",
+                "message": "No se pudieron obtener datos del dispositivo EEG."
+            }), 500
+            
+        tbr_live = calculate_tbr(eeg_samples)
+        return jsonify({
+            "tbr_value": tbr_live,
             "tbr": tbr_live,
-            "tbr_min": session["tbr_min"],   # usa los reales, ya sabemos que existen
+            "tbr_min": session["tbr_min"],
             "tbr_max": session["tbr_max"],
+            "status": "connected",
+            "message": "Datos TBR obtenidos correctamente",
+            "simulated": False
         })
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({
+            "error": "calculation_error",
+            "message": f"Error al calcular TBR: {str(e)}"
+        }), 500
 
 @app.route("/tbr_stream")
 def tbr_stream():
@@ -315,17 +356,40 @@ def resultados():
 
 @app.route("/eeg_plot")
 def eeg_plot():
-    """Muestra una imagen PNG con 5 s de señal EEG."""
+    """Muestra una imagen PNG con 5 s de señal EEG."""
+    if inlet is None:
+        # Generar señal simulada cuando no hay conexión EEG
+        tiempo = np.linspace(0, 5, 1280)  # 5 segundos a 256 Hz
+        signal = np.random.normal(0, 50, 1280) + 10 * np.sin(2 * np.pi * 10 * tiempo)
+        
+        plt.figure(figsize=(10, 4))
+        plt.plot(tiempo, signal, label="Señal Simulada (Sin EEG)", color='orange')
+        plt.title("Señal EEG Simulada - Dispositivo No Conectado")
+        plt.xlabel("Tiempo (s)")
+        plt.ylabel("Amplitud")
+        plt.grid(True)
+        plt.legend()
+        plt.text(2.5, max(signal)*0.8, "⚠️ Modo Simulación", 
+                ha='center', fontsize=12, bbox=dict(boxstyle="round", facecolor='yellow', alpha=0.7))
+        
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+        img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        buf.close()
+        
+        return render_template("eeg_plot.html", plot_url=img_b64)
+    
     try:
         eeg = np.array(get_eeg_samples(inlet, duration_sec=5, fs=256))
         signal = eeg[:, 0]
         tiempo = np.linspace(0, 5, len(signal))
 
         plt.figure(figsize=(10, 4))
-        plt.plot(tiempo, signal, label="EEG Signal")
-        plt.title("EEG Signal Variations Over Time")
-        plt.xlabel("Time (s)")
-        plt.ylabel("Amplitude")
+        plt.plot(tiempo, signal, label="Señal EEG Real", color='#00c9a7')
+        plt.title("Variaciones de Señal EEG en Tiempo Real")
+        plt.xlabel("Tiempo (s)")
+        plt.ylabel("Amplitud")
         plt.grid(True)
         plt.legend()
 
@@ -342,12 +406,18 @@ def eeg_plot():
 
 @app.route("/eeg_data")
 def eeg_data():
-    """Devuelve 1 s de señal (para Chart.js realtime)."""
+    """Devuelve 1 s de señal (para Chart.js realtime)."""
+    if inlet is None:
+        # Generar datos simulados cuando no hay conexión EEG
+        tiempo = np.linspace(0, 1, 256).tolist()  # 1 segundo a 256 Hz
+        signal = (np.random.normal(0, 30, 256) + 5 * np.sin(2 * np.pi * 8 * np.array(tiempo))).tolist()
+        return jsonify({"time": tiempo, "signal": signal, "simulated": True})
+    
     try:
         eeg = np.array(get_eeg_samples(inlet, duration_sec=1, fs=256))
         signal = eeg[:, 0].tolist()
         tiempo = np.linspace(0, 1, len(signal)).tolist()
-        return jsonify({"time": tiempo, "signal": signal})
+        return jsonify({"time": tiempo, "signal": signal, "simulated": False})
     except Exception as e:
         return jsonify({"error": str(e)})
 
@@ -357,6 +427,61 @@ def eeg_data():
 @app.route("/realtime")
 def realtime():
     return render_template("realtime.html")
+
+
+# ---------- 5. Página de pruebas -----------------------------------
+
+@app.route("/pruebas")
+def pruebas():
+    return render_template("pruebas.html")
+
+
+@app.route("/memorama")
+def memorama():
+    return render_template("memorama.html")
+
+
+@app.route("/stroop")
+def stroop():
+    return render_template("stroop.html")
+
+@app.route("/focus_hunter")
+def focus_hunter():
+    return render_template("focus_hunter.html")
+
+
+@app.route("/save_game_result", methods=["POST"])
+def save_game_result():
+    """Guarda los resultados de los juegos de ADHD."""
+    try:
+        data = request.get_json()
+        
+        # Validar datos requeridos
+        required_fields = ['game', 'time', 'score', 'avgTBR']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Faltan campos requeridos"}), 400
+        
+        # Agregar timestamp
+        data['timestamp'] = time.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Cargar resultados existentes
+        game_results_file = pathlib.Path("game_results.json")
+        if game_results_file.exists():
+            game_results = json.loads(game_results_file.read_text())
+        else:
+            game_results = []
+        
+        # Agregar nuevo resultado
+        game_results.append(data)
+        
+        # Guardar resultados
+        game_results_file.write_text(json.dumps(game_results, indent=2))
+        
+        return jsonify({"success": True, "message": "Resultado guardado correctamente"})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 # -------------------------------------------------------------------

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}App EEG{% endblock %}</title>
+    <title>{% block title %}EEG App{% endblock %}</title>
 
     <!-- Bootstrap CSS -->
     <link
@@ -12,7 +12,8 @@
     />
 
     <style>
-      html, body {
+      html,
+      body {
         height: 100%;
         margin: 0;
       }
@@ -60,7 +61,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
-        <a class="navbar-brand" href="/">EEG-TDAH</a>
+        <a class="navbar-brand" href="/">NeuroFocus</a>
         <button
           class="navbar-toggler"
           type="button"
@@ -76,18 +77,46 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav ms-auto">
             <li class="nav-item">
-              <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Inicio</a>
+              <a
+                class="nav-link {% if request.path == '/' %}active{% endif %}"
+                href="/"
+                >Home</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.path.startswith('/calib') %}active{% endif %}" href="/calib">Calibrar TBR</a>
-            </li>
-              <a class="nav-link {% if request.path.startswith('/juego') %}active{% endif %}" href="/realtime">Evaluación en tiemp real</a>
+              <a
+                class="nav-link {% if request.path.startswith('/calib') %}active{% endif %}"
+                href="/calib"
+                >Calibrate TBR</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.path.startswith('/resultados') %}active{% endif %}" href="/resultados">Resultados</a>
+              <a
+                class="nav-link {% if request.path.startswith('/pruebas') %}active{% endif %}"
+                href="/pruebas"
+                >Tests</a
+              >
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.path.startswith('/contacto') %}active{% endif %}" href="/informacion">Información Adicional</a>
+              <a
+                class="nav-link {% if request.path.startswith('/realtime') %}active{% endif %}"
+                href="/realtime"
+                >Real-time Evaluation</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.path.startswith('/resultados') %}active{% endif %}"
+                href="/resultados"
+                >Results</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.path.startswith('/contacto') %}active{% endif %}"
+                href="/informacion"
+                >Additional Information</a
+              >
             </li>
           </ul>
         </div>
@@ -96,14 +125,13 @@
 
     <!-- Contenido principal -->
     <main>
-      <div class="content-wrapper">
-        {% block content %}{% endblock %}
-      </div>
+      <div class="content-wrapper">{% block content %}{% endblock %}</div>
     </main>
 
     <!-- Footer -->
     <footer>
-      © 2025 Mirai Innovation Research Institute · Proyecto médico experimental para evaluación cognitiva.
+      © 2025 Mirai Innovation Research Institute · Experimental medical project
+      for cognitive evaluation.
     </footer>
 
     <!-- Bootstrap JS -->
