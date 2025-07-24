@@ -38,8 +38,8 @@ def save_stats():
 def leer_csv_auto(file_storage, header_row: int = 0, units_row: int | None = 1) -> pd.DataFrame:
     """Lee un CSV Aura probando codificaciones habituales.
 
-    - `header_row`: fila donde están los nombres de columna.
-    - `units_row`: fila con las unidades (µV, etc.) que se eliminará si se indica.
+    - header_row: fila donde están los nombres de columna.
+    - units_row: fila con las unidades (µV, etc.) que se eliminará si se indica.
     """
     for enc in ("utf-8", "utf-16-le", "latin-1"):
         try:
