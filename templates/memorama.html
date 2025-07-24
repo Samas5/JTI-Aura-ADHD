@@ -241,6 +241,53 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* Modal styles */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.6);
+  }
+  .modal-content {
+    background: #fefefe;
+    color: #000;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  .close {
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #aaa;
+  }
+  .close:hover {
+    color: #000;
+  }
+  .modal-body {
+    position: relative;
+    height: 450px;
+  }
+  .modal-body canvas {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 400px;
+  }
 </style>
 
 <div class="memorama-container">
@@ -309,15 +356,35 @@
     </div>
     <div style="margin-top: 20px;">
       <button class="btn-game" onclick="resetGame()">Play Again</button>
+      <button class="btn-game" id="showGraphBtn" onclick="showTBRGraph()" style="background: #17a2b8;">📊 Show TBR Graph</button>
       <button class="btn-game" onclick="window.location.href='/pruebas'">Continue with Next Tests</button>
+    </div>
+  </div>
+
+  <!-- Modal para gráfica TBR -->
+  <div id="tbrGraphModal" class="modal" style="display: none; position: fixed; z-index: 1000; inset: 0; width: 100%; height: 100%; overflow: auto; background: rgba(0, 0, 0, 0.6);">
+    <div class="modal-content" style="background: #fefefe; color: #000; margin: 80px auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 1000px;">
+      <span class="close" onclick="closeTBRGraph()" style="float: right; font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa;">&times;</span>
+      <h3 style="text-align: center; margin-bottom: 20px;">📊 TBR Variation During Memory Game</h3>
+      <canvas id="tbrGameChart" style="width: 100% !important; height: 400px !important;"></canvas>
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="btn-game" onclick="closeTBRGraph()">Close</button>
+      </div>
     </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Variables del juego
 let gameStarted = false;
 let gameTime = 0;
+
+// Variables para gráfica TBR
+let tbrData = [];
+let timeData = [];
+let tbrChart = null;
+let tbrInterval = null;
 let gameTimer = null;
 let pairsFound = 0;
 let flippedCards = [];
@@ -425,6 +492,10 @@ function startGame() {
   pairsFound = 0;
   tbrValues = [];
   
+  // Inicializar datos para gráfica TBR
+  tbrData = [];
+  timeData = [];
+  
   document.getElementById('startBtn').disabled = true;
   document.getElementById('resetBtn').disabled = false;
   document.getElementById('gameOver').classList.add('hidden');
@@ -440,6 +511,9 @@ function startGame() {
   
   // Iniciar monitoreo TBR
   startTBRMonitoring();
+  
+  // Iniciar recolección de datos TBR para gráfica
+  startTBRDataCollection();
 }
 
 // Reiniciar juego
@@ -447,11 +521,16 @@ function resetGame() {
   gameStarted = false;
   clearInterval(gameTimer);
   clearInterval(tbrTimer);
+  clearInterval(tbrInterval);
   
   gameTime = 0;
   pairsFound = 0;
   flippedCards = [];
   tbrValues = [];
+  
+  // Limpiar datos de gráfica TBR
+  tbrData = [];
+  timeData = [];
   
   document.getElementById('startBtn').disabled = false;
   document.getElementById('resetBtn').disabled = true;
@@ -585,6 +664,107 @@ function saveGameResults(results) {
     },
     body: JSON.stringify(results)
   }).catch(error => console.error('Error guardando resultados:', error));
+}
+
+// Función para recolectar datos TBR durante el juego
+function startTBRDataCollection() {
+  tbrInterval = setInterval(() => {
+    if (gameStarted) {
+      fetch('/tbr_value')
+        .then(response => response.json())
+        .then(data => {
+          if (data.tbr_value !== null && data.tbr_value !== undefined) {
+            tbrData.push(data.tbr_value);
+            timeData.push(gameTime);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching TBR data:', error);
+        });
+    } else {
+      // Detener recolección cuando el juego no esté activo
+      clearInterval(tbrInterval);
+    }
+  }, 1000); // Recolectar cada segundo
+}
+
+// Función para mostrar la gráfica TBR
+function showTBRGraph() {
+  const modal = document.getElementById('tbrGraphModal');
+  const ctx = document.getElementById('tbrGameChart').getContext('2d');
+  
+  // Verificar que hay datos para mostrar
+  if (tbrData.length === 0) {
+    alert('No hay datos TBR disponibles para mostrar.');
+    return;
+  }
+  
+  // Destruir gráfica anterior si existe
+  if (tbrChart) {
+    tbrChart.destroy();
+  }
+  
+  // Crear copia estática de los datos para evitar actualizaciones
+  const staticTbrData = [...tbrData];
+  const staticTimeData = [...timeData];
+  
+  // Crear nueva gráfica estática
+  tbrChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: staticTimeData,
+      datasets: [{
+        label: 'TBR Value',
+        data: staticTbrData,
+        borderColor: '#007bff',
+        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2,
+      animation: false, // Desactivar animaciones
+      interaction: {
+        intersect: false
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Tiempo (segundos)'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Valor TBR'
+          },
+          min: 0,
+          max: 8
+        }
+      },
+      plugins: {
+        title: {
+          display: true,
+          text: 'Variación TBR Durante el Juego'
+        },
+        legend: {
+          display: true
+        }
+      }
+    }
+  });
+  
+  modal.style.display = 'block';
+}
+
+// Función para cerrar la gráfica TBR
+function closeTBRGraph() {
+  document.getElementById('tbrGraphModal').style.display = 'none';
 }
 
 // Inicializar cuando se carga la página
